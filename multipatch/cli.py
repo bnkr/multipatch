@@ -54,11 +54,18 @@ class MultiPatchCli(object):
                 config.set('url', remote['uri'])
                 del config
             except IndexError:
+                # TODO: better error?  __in__ doesn't work properly
                 self.log("create remote {0}; set url to {1}", remote['name'], remote['uri'])
                 repo.create_remote(remote['name'], remote['uri'])
 
         for branch in tracking['branches']:
+            self.log("create branch {0!r}", branch)
+            # TODO: not working yet
             print branch
+            remote = repo.remotes[branch['origin']]
+            path = ".".join([remote.name, branch['branch']])
+            branch = repo.create_head(path)
+            branch.set_tracking_branch(remote)
 
         return 0
 
