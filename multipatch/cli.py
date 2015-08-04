@@ -56,15 +56,21 @@ class MultiPatchCli(object):
                 repo.create_remote(remote['name'], remote['uri'])
 
         for branch in tracking['branches']:
+            if 'remote' not in branch:
+                self.log("skip local-only branch {0!r}", branch)
+                continue
+
             self.log("create branch {0!r}", branch)
-            remote = repo.remotes[branch['origin']]
+            remote = repo.remotes[branch['remote']]
             # Can't work out how to restrict to just the branch we actually care
             # about but the branches cann't be created until this.
             remote.fetch()
 
             remote_branch = remote.refs[branch['branch']]
 
-            # Create a tracking branch without checking it out.
+            # Create a local tracking branch without checking it out.  This is
+            # not actually all that useful for logging but can be useful if you
+            # want to view the actual source.
             path = ".".join([remote.name, branch['branch']])
             branch = repo.create_head(path, commit=remote_branch.commit)
             branch.set_tracking_branch(remote_branch)
@@ -78,12 +84,13 @@ class MultiPatchCli(object):
 
         wip = []
         for branch in tracking['branches']:
-            # TODO: Why not just use the remote branch ref?
-            remote = repo.remotes[branch['origin']]
-            branch_name = ".".join([remote.name, branch['branch']])
-            ref = repo.refs[branch_name]
+            if 'remote' in branch:
+                remote = repo.remotes[branch['remote']]
+                ref = remote.refs[branch['branch']]
+            else:
+                ref = repo.branches[branch['branch']]
 
-            commits = git.objects.Commit.iter_items(repo, branch_name)
+            commits = git.objects.Commit.iter_items(repo, ref.name)
             try:
                 top = commits.next()
             except StopIteration:
