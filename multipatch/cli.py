@@ -1,4 +1,4 @@
-import argparse, sys, os, yaml, logging
+import argparse, sys, os, yaml, logging, errno
 from datetime import datetime as DateTime
 import git
 
@@ -118,7 +118,14 @@ class MultiPatchCli(object):
             wip.sort(key=lambda entry: entry['top'].committed_date, reverse=False)
 
             current = wip[-1]
-            self.print_pretty_log_message(ref=current['ref'], commit=current['top'])
+
+            try:
+                self.print_pretty_log_message(ref=current['ref'], commit=current['top'])
+            except IOError as ex:
+                if ex.errno == errno.EPIPE:
+                    return 0
+                else:
+                    raise
 
             try:
                 current['top'] = current['iter'].next()
