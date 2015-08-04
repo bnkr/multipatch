@@ -60,12 +60,17 @@ class MultiPatchCli(object):
 
         for branch in tracking['branches']:
             self.log("create branch {0!r}", branch)
-            # TODO: not working yet
-            print branch
             remote = repo.remotes[branch['origin']]
+            # Can't work out how to restrict to just the branch we actually care
+            # about but the branches cann't be created until this.
+            remote.fetch()
+
+            remote_branch = remote.refs[branch['branch']]
+
+            # Create a tracking branch without checking it out.
             path = ".".join([remote.name, branch['branch']])
-            branch = repo.create_head(path)
-            branch.set_tracking_branch(remote)
+            branch = repo.create_head(path, commit=remote_branch.commit)
+            branch.set_tracking_branch(remote_branch)
 
         return 0
 
