@@ -41,6 +41,14 @@ class MultiPatchCli(object):
         if repo.active_branch.name != "master":
             self.raise_error("repo could not swtich to master")
 
+        fetched = set()
+
+        def fetch_remote(remote):
+            if remote.name not in fetched:
+                self.log("fetching remote {0}", remote.name)
+                remote.fetch()
+                fetched.add(remote.name)
+
         for remote in tracking['remotes']:
             # Does not seem to be a check.
             try:
@@ -57,6 +65,9 @@ class MultiPatchCli(object):
                 self.log("create remote {0}; set url to {1}", remote['name'], remote['uri'])
                 repo.create_remote(remote['name'], remote['uri'])
 
+            if self.settings.fetch or not tracking['branches']:
+                fetch_remote(repo.remotes[remote['name']])
+
         for branch in tracking['branches']:
             if 'remote' not in branch:
                 self.log("skip local-only branch {0!r}", branch)
@@ -64,9 +75,10 @@ class MultiPatchCli(object):
 
             self.log("create branch {0!r}", branch)
             remote = repo.remotes[branch['remote']]
-            # Can't work out how to restrict to just the branch we actually care
-            # about but the branches cann't be created until this.
-            remote.fetch()
+
+            # The branches cann't be created until this.
+            if remote.name not in fetched:
+                fetch_remote(remote)
 
             remote_branch = remote.refs[branch['branch']]
 
@@ -206,6 +218,9 @@ class MultiPatchCli(object):
         commands = parser.add_subparsers(dest="command")
         create = commands.add_parser("create")
         create.add_argument('root')
+        create.add_argument('-f', '--fetch', action='store_true',
+                            help="Fetch remotes we aren't using for branches.")
+
         log = commands.add_parser("log")
         log.add_argument('root', nargs="?", default=os.getcwd())
         log.add_argument("-m", "--all-masters", action="store_true",
