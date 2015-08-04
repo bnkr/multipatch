@@ -128,12 +128,24 @@ class MultiPatchCli(object):
         return 0
 
     def print_pretty_log_message(self, ref, commit):
-        print commit
-        print ref.name
-        print DateTime.fromtimestamp(commit.committed_date)
-        print commit.message.strip()
-        print commit.summary.strip()
-        print
+        words = commit.author.name.split(' ')
+        initials = "".join([word[0].upper() for word in words])
+        print DateTime.fromtimestamp(commit.committed_date), commit.hexsha[0:6], \
+                ref.name, initials, commit.summary[0:90].strip()
+
+        if self.settings.stat and commit.stats.files:
+            print
+            for path, change in commit.stats.files.iteritems():
+                print "  -{0} +{1}".format(change['deletions'], change['insertions']).ljust(10), path
+
+        if self.settings.patch:
+            diffs = commit.diff()
+            if diffs:
+                print
+
+            for diff in diffs:
+                print diff
+                print
 
     def get_config(self):
         config, looked_in = self.get_config_file()
@@ -231,6 +243,10 @@ class MultiPatchCli(object):
                           help="Show logs from all remotes.")
         log.add_argument("-x", "--exclude", action='append', default=[],
                           help="Exclude ref names matching.")
+        log.add_argument("-s", "--stat", action='store_true',
+                          help="Show stat.")
+        log.add_argument("-p", "--patch", action='store_true',
+                          help="Show patch.")
         return parser
 
     def parse_args(self, parser):
