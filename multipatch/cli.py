@@ -42,14 +42,18 @@ class MultiPatchCli(object):
             self.raise_error("repo could not swtich to master")
 
         for remote in tracking['remotes']:
+            # Does not seem to be a check.
             try:
-                self.log("{0} exists; set url to {1}", remote['name'], remote['uri'])
                 existing = repo.remotes[remote['name']]
+            except IndexError:
+                existing = None
+
+            if existing:
+                self.log("{0} exists; set url to {1}", remote['name'], remote['uri'])
                 config = existing.config_writer
                 config.set('url', remote['uri'])
                 del config
-            except IndexError:
-                # TODO: better error?  __in__ doesn't work properly
+            else:
                 self.log("create remote {0}; set url to {1}", remote['name'], remote['uri'])
                 repo.create_remote(remote['name'], remote['uri'])
 
