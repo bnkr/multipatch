@@ -30,9 +30,7 @@ class MultiPatchCli(object):
     def run_create_command(self):
         """Configure git's remotes and branches to have the configured remote
         repositories and some non-checked out branches."""
-        tracking = self.get_config()
-
-        repo = git.Repo(self.settings.root)
+        repo, tracking = self.get_config()
 
         # Possibly not necessary?
         for head in repo.heads:
@@ -79,8 +77,7 @@ class MultiPatchCli(object):
 
     def run_log_command(self):
         """Print the logs of the tracked branches in chronological order."""
-        tracking = self.get_config()
-        repo = git.Repo(self.settings.root)
+        repo, tracking = self.get_config_for_logging()
 
         wip = []
         for branch in tracking['branches']:
@@ -123,22 +120,98 @@ class MultiPatchCli(object):
         print
 
     def get_config(self):
-        root = self.settings.root
-        # TODO: Wrong if the repo is bare, but not that wrong.
-        config = os.path.join(root, ".git", "multipatch.yml")
-        if not os.path.exists(config):
-            self.raise_error("no such file: {0}", config)
+        config, looked_in = self.get_config_file()
+        if not config:
+            self.raise_error("no such file: {0}", looked_in)
 
         with open(config) as io:
-            return yaml.load(io.read())
+            tracking = yaml.load(io.read())
+            return git.Repo(self.settings.root), tracking
+
+    def get_config_for_logging(self):
+        """Use config or git branches and whatnot to find some things to log."""
+        ignore_config = [self.settings.everything, self.settings.all_masters,
+                         self.settings.all_remotes]
+        if True not in ignore_config:
+            repo, tracking = self.get_config()
+            return repo, self.filter_branches(tracking)
+
+        repo = git.Repo(self.settings.root)
+
+        remotes = self.find_logables_from_remotes(repo)
+        locals = self.find_logables_from_locals(repo)
+
+        tracking = {}
+        tracking['branches'] = remotes + locals
+
+        return repo, self.filter_branches(tracking)
+
+    def find_logables_from_locals(self, repo):
+        logables = []
+        for branch in repo.branches:
+            if self.settings.everything:
+                logables.append({'branch': branch.name, 'ref': branch})
+
+        return logables
+
+    def find_logables_from_remotes(self, repo):
+        logables = []
+        for remote in repo.remotes:
+            for ref in remote.refs:
+                logable = {
+                    'remote': remote.name,
+                    'branch': ref.name.replace(remote.name + "/", ''),
+                    'ref': ref,
+                }
+
+                if self.settings.all_remotes or self.settings.everything:
+                    logables.append(logable)
+                elif logable['branch'] == "master" and self.settings.all_masters:
+                    logables.append(logable)
+
+        return logables
+
+    def filter_branches(self, tracking):
+        """Remove stuff excluded with -x."""
+        filtered = []
+        for entry in tracking['branches']:
+            skip = False
+            for exclude in self.settings.exclude:
+                name = entry.get('remote', '') + "/" + entry['branch']
+                if exclude in name:
+                    skip = True
+
+            if not skip:
+                filtered.append(entry)
+
+        return {'branches': filtered}
+
+    def get_config_file(self):
+        looked_in = [
+            os.path.join(self.settings.root, ".git", "multipatch.yml"),
+        ]
+
+        for path in looked_in:
+            if os.path.exists(path):
+                return path, looked_in
+
+        return None, looked_in
 
     def make_parser(self):
         parser = argparse.ArgumentParser()
         commands = parser.add_subparsers(dest="command")
         create = commands.add_parser("create")
         create.add_argument('root')
-        create = commands.add_parser("log")
-        create.add_argument('root')
+        log = commands.add_parser("log")
+        log.add_argument('root')
+        log.add_argument("-m", "--all-masters", action="store_true",
+                          help="Show logs from all remotes branches named 'master'.")
+        log.add_argument("-A", "--all-remotes", action="store_true",
+                          help="Show logs from all remotes.")
+        log.add_argument("-e", "--everything", action="store_true",
+                          help="Show logs from all remotes.")
+        log.add_argument("-x", "--exclude", action='append', default=[],
+                          help="Exclude ref names matching.")
         return parser
 
     def log(self, message, *parts, **kparts):

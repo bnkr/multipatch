@@ -67,8 +67,7 @@ Given the same configuration::
 Logs of each listed in ``branches`` will be displayed in chronological order.
 
 You can log without using ``create`` if you're prepared to manage your branches
-manually.  The ``log`` operation does not need the branches to be local but it
-does need the remotes to be configured properly.
+manually.  See --help for more details.
 
 More
 ----
