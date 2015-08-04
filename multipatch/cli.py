@@ -10,7 +10,7 @@ class MultiPatchCli(object):
 
     def run(self):
         parser = self.make_parser()
-        self.settings = parser.parse_args(self.argv[1:])
+        self.settings = self.parse_args(parser)
 
         self.logger = logging.getLogger("multipatch")
         message_format = '%(asctime)s %(levelname)s %(name)s: %(message)s'
@@ -203,7 +203,7 @@ class MultiPatchCli(object):
         create = commands.add_parser("create")
         create.add_argument('root')
         log = commands.add_parser("log")
-        log.add_argument('root')
+        log.add_argument('root', nargs="?", default=os.getcwd())
         log.add_argument("-m", "--all-masters", action="store_true",
                           help="Show logs from all remotes branches named 'master'.")
         log.add_argument("-A", "--all-remotes", action="store_true",
@@ -213,6 +213,10 @@ class MultiPatchCli(object):
         log.add_argument("-x", "--exclude", action='append', default=[],
                           help="Exclude ref names matching.")
         return parser
+
+    def parse_args(self, parser):
+        settings = parser.parse_args(self.argv[1:])
+        return settings
 
     def log(self, message, *parts, **kparts):
         message = message.format(*parts, **kparts)
