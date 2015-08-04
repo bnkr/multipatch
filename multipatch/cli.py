@@ -134,7 +134,6 @@ class MultiPatchCli(object):
                 ref.name, initials, commit.summary[0:90].strip()
 
         if self.settings.stat and commit.stats.files:
-            print
             for path, change in commit.stats.files.iteritems():
                 print "  -{0} +{1}".format(change['deletions'], change['insertions']).ljust(10), path
 
