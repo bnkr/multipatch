@@ -93,8 +93,17 @@ class MultiPatchCli(object):
 
     def run_log_command(self):
         """Print the logs of the tracked branches in chronological order."""
-        repo, tracking = self.get_config_for_logging()
+        try:
+            branches = self.get_branches_to_log()
+            self.print_logs_chronologically(branches)
+            return 0
+        except KeyboardInterrupt:
+            # Avoid spammy exception when we quit in the middle.
+            return 0
 
+    def get_branches_to_log(self):
+        """Initialise iterators for commits on each branch we want to track."""
+        repo, tracking = self.get_config_for_logging()
         wip = []
         for branch in tracking['branches']:
             if 'remote' in branch:
@@ -111,9 +120,14 @@ class MultiPatchCli(object):
 
             wip.append({'ref': ref, 'top': top, 'iter': commits})
 
-        # Sort in ascending order of commit date.  Print the highest (iow most
-        # recent).  If we run out of commits to print then remove from the next
-        # iteration.
+        return wip
+
+    def print_logs_chronologically(self, wip):
+        """
+        Sort in ascending order of commit date.  Print the highest (iow most
+        recent).  If we run out of commits to print then remove from the next
+        iteration.
+        """
         while wip:
             wip.sort(key=lambda entry: entry['top'].committed_date, reverse=False)
 
@@ -123,7 +137,7 @@ class MultiPatchCli(object):
                 self.print_pretty_log_message(ref=current['ref'], commit=current['top'])
             except IOError as ex:
                 if ex.errno == errno.EPIPE:
-                    return 0
+                    return
                 else:
                     raise
 
@@ -132,7 +146,7 @@ class MultiPatchCli(object):
             except StopIteration:
                 wip.pop()
 
-        return 0
+        return
 
     def print_pretty_log_message(self, ref, commit):
         words = commit.author.name.split(' ')
