@@ -128,10 +128,20 @@ class MultiPatchCli(object):
         recent).  If we run out of commits to print then remove from the next
         iteration.
         """
+        last_date = None
+
         while wip:
             wip.sort(key=lambda entry: entry['top'].committed_date, reverse=False)
 
             current = wip[-1]
+
+            this_date = DateTime.fromtimestamp(current['top'].committed_date).date()
+
+            should_print = this_date != last_date
+            if self.settings.split_days and this_date != last_date:
+                print("On {0}:".format(this_date.isoformat()))
+
+            last_date = this_date
 
             try:
                 self.print_pretty_log_message(ref=current['ref'], commit=current['top'])
@@ -267,6 +277,8 @@ class MultiPatchCli(object):
                           help="Show stat.")
         log.add_argument("-p", "--patch", action='store_true',
                           help="Show patch.")
+        log.add_argument("-d", "--split-days", action='store_true',
+                          help="Print a header when the day changes.")
         return parser
 
     def parse_args(self, parser):
