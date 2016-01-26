@@ -309,6 +309,8 @@ class MultiPatchCli(object):
         error = message.format(*parts, **kparts)
         raise Exception(error)
 
+def main():
+    sys.exit(MultiPatchCli(sys.argv).run())
 
 if __name__ == "__main__":
-    sys.exit(MultiPatchCli(sys.argv).run())
+    main()
