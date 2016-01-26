@@ -161,8 +161,9 @@ class MultiPatchCli(object):
     def print_pretty_log_message(self, ref, commit):
         words = commit.author.name.split(' ')
         initials = "".join([word[0].upper() for word in words])
+        summary = self.force_unicode(commit.summary)
         print DateTime.fromtimestamp(commit.committed_date), commit.hexsha[0:6], \
-                ref.name, initials, commit.summary[0:90].strip()
+                ref.name, initials, summary.strip()[0:90]
 
         if self.settings.stat and commit.stats.files:
             for path, change in commit.stats.files.iteritems():
@@ -176,6 +177,18 @@ class MultiPatchCli(object):
             for diff in diffs:
                 print diff
                 print
+
+    def force_unicode(self, string, codecs=None):
+        codecs = codecs or ['utf8', 'cp1252']
+        for codec in codecs:
+            try:
+                return string.decode(codec)
+            except UnicodeDecodeError as _:
+                pass
+
+        # Would be a lot better to replace the individual characters with
+        # bytes.
+        raise UnicodeDecodeError("could not decode")
 
     def get_config(self):
         config, looked_in = self.get_config_file()
@@ -295,6 +308,7 @@ class MultiPatchCli(object):
     def raise_error(self, message, *parts, **kparts):
         error = message.format(*parts, **kparts)
         raise Exception(error)
+
 
 if __name__ == "__main__":
     sys.exit(MultiPatchCli(sys.argv).run())
