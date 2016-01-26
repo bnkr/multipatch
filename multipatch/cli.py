@@ -1,4 +1,4 @@
-import argparse, sys, os, yaml, logging, errno
+import argparse, sys, os, yaml, logging, errno, locale
 from datetime import datetime as DateTime
 import git
 
@@ -160,10 +160,25 @@ class MultiPatchCli(object):
 
     def print_pretty_log_message(self, ref, commit):
         words = commit.author.name.split(' ')
-        initials = "".join([word[0].upper() for word in words])
-        summary = self.force_unicode(commit.summary)
-        print DateTime.fromtimestamp(commit.committed_date), commit.hexsha[0:6], \
-                ref.name, initials, summary.strip()[0:90]
+        initials = u"".join([word[0].upper() for word in words])
+        message = u"".join([
+            unicode(DateTime.fromtimestamp(commit.committed_date)),
+            commit.hexsha[0:6],
+            ref.name, initials,
+            commit.summary.strip()[0:90]
+        ])
+
+        # Very awkward.  Default encoding is chosen on stdout by not well
+        # documented means, probably by the C locale.  If it's not a tty then
+        # it's usually ascii in which case we need to pre-encode or things will
+        # crash when ever you have a multi-byte commit message, even though the
+        # git library is dealing with this case properly.
+        #
+        # (There is probably a nicer way to do this)
+        if sys.stdout.isatty():
+            print(message)
+        else:
+            print(message.encode(locale.getpreferredencoding()))
 
         if self.settings.stat and commit.stats.files:
             for path, change in commit.stats.files.iteritems():
@@ -177,18 +192,6 @@ class MultiPatchCli(object):
             for diff in diffs:
                 print diff
                 print
-
-    def force_unicode(self, string, codecs=None):
-        codecs = codecs or ['utf8', 'cp1252']
-        for codec in codecs:
-            try:
-                return string.decode(codec)
-            except UnicodeDecodeError as _:
-                pass
-
-        # Would be a lot better to replace the individual characters with
-        # bytes.
-        raise UnicodeDecodeError("could not decode")
 
     def get_config(self):
         config, looked_in = self.get_config_file()

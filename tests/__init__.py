@@ -30,11 +30,11 @@ class CliTest(TestCase):
         Commit = namedtuple('Commit', ['summary', 'hexsha', 'author', 'committed_date'])
         ref = Ref(name="repo/master")
 
-        utf8_bytes = b"Blah blah \xc2\xa3"
-
         author = Author(name="some guy")
+
+        unicode_bits = u"aaaaaa repo/master SG Blah blah \u00a3"
         commit = Commit(hexsha="a" * 32,
-                        summary=utf8_bytes,
+                        summary=unicode_bits,
                         author=author,
                         committed_date=time.time())
 
@@ -42,6 +42,9 @@ class CliTest(TestCase):
         with redirect_stdout(to=io):
             cli.print_pretty_log_message(ref=ref, commit=commit)
 
-        printed = io.getvalue().encode("utf-8")
+        # Important bit here: we must have encoded the output becuase the print
+        # function doesn't do it when we are piping stdout.  Hard to catch this
+        # one.
+        printed = io.getvalue()
         expected = b'aaaaaa repo/master SG Blah blah \xc2\xa3'
         self.assertIn(expected, printed)
