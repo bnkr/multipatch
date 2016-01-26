@@ -161,10 +161,11 @@ class MultiPatchCli(object):
     def print_pretty_log_message(self, ref, commit):
         words = commit.author.name.split(' ')
         initials = u"".join([word[0].upper() for word in words])
-        message = u"".join([
+        message = u" ".join([
             unicode(DateTime.fromtimestamp(commit.committed_date)),
             commit.hexsha[0:6],
-            ref.name, initials,
+            ref.name,
+            initials,
             commit.summary.strip()[0:90]
         ])
 

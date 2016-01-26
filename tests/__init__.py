@@ -46,5 +46,5 @@ class CliTest(TestCase):
         # function doesn't do it when we are piping stdout.  Hard to catch this
         # one.
         printed = io.getvalue()
-        expected = b'aaaaaa repo/master SG Blah blah \xc2\xa3'
+        expected = b' aaaaaa repo/master SG Blah blah \xc2\xa3'
         self.assertIn(expected, printed)
